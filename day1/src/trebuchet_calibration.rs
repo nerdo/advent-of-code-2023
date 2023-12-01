@@ -34,60 +34,83 @@ zoneight234
     }
 }
 
+enum Position {
+    Beginning,
+    End,
+}
+
+fn get_digit(line: &str, starting_from: Position) -> &str {
+    let num_letters = line.len();
+    let mut index = match starting_from {
+        Position::Beginning => 0,
+        Position::End => std::cmp::max(0, num_letters - 1),
+    };
+
+    loop {
+        match starting_from {
+            Position::Beginning => {
+                if index >= num_letters {
+                    return "";
+                }
+            }
+            Position::End => {
+                if index == 0 {
+                    return "";
+                }
+            }
+        };
+        let current = &line[index..std::cmp::min(num_letters, index + 1)];
+        match current {
+            "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" => return current,
+            _ => {}
+        };
+
+        let three_letter_word = &line[index..std::cmp::min(num_letters, index + 3)];
+        let four_letter_word = &line[index..std::cmp::min(num_letters, index + 4)];
+        let five_letter_word = &line[index..std::cmp::min(num_letters, index + 5)];
+
+        if three_letter_word == "one" || three_letter_word == "two" || three_letter_word == "six" {
+            match three_letter_word {
+                "one" => return "1",
+                "two" => return "2",
+                "six" => return "6",
+                _ => panic!("matched on a three letter word, but it wasn't one, two, or six!"),
+            };
+        } else if four_letter_word == "four"
+            || four_letter_word == "five"
+            || four_letter_word == "nine"
+        {
+            match four_letter_word {
+                "four" => return "4",
+                "five" => return "5",
+                "nine" => return "9",
+                _ => panic!("matched on a four letter word, but it wasn't four, five, or nine!"),
+            };
+        } else if five_letter_word == "three"
+            || five_letter_word == "seven"
+            || five_letter_word == "eight"
+        {
+            match five_letter_word {
+                "three" => return "3",
+                "seven" => return "7",
+                "eight" => return "8",
+                _ => panic!("matched on a five letter word, but it wasn't three, seven, or eight!"),
+            };
+        }
+        match starting_from {
+            Position::Beginning => index += 1,
+            Position::End => index -= 1,
+        };
+    }
+}
+
 pub fn get_calibration_sum_from_spelled_out_digits(calibration_document: &str) -> i32 {
     let transformed_calibration_document = calibration_document
         .lines()
         .map(|line| {
-            let num_letters = line.len();
-            let mut index = 0;
-            let mut transformed_letters = Vec::new();
-            while index < num_letters {
-                let three_letter_word = &line[index..std::cmp::min(num_letters, index + 3)];
-                let four_letter_word = &line[index..std::cmp::min(num_letters, index + 4)];
-                let five_letter_word = &line[index..std::cmp::min(num_letters, index + 5)];
-
-                if three_letter_word == "one"
-                    || three_letter_word == "two"
-                    || three_letter_word == "six"
-                {
-                    transformed_letters.push(String::from(match three_letter_word {
-                        "one" => "1",
-                        "two" => "2",
-                        "six" => "6",
-                        _ => three_letter_word,
-                    }));
-                    index += 3;
-                } else if four_letter_word == "zero"
-                    || four_letter_word == "four"
-                    || four_letter_word == "five"
-                    || four_letter_word == "nine"
-                {
-                    transformed_letters.push(String::from(match four_letter_word {
-                        "zero" => "0",
-                        "four" => "4",
-                        "five" => "5",
-                        "nine" => "9",
-                        _ => four_letter_word,
-                    }));
-                    index += 4;
-                } else if five_letter_word == "three"
-                    || five_letter_word == "seven"
-                    || five_letter_word == "eight"
-                {
-                    transformed_letters.push(String::from(match five_letter_word {
-                        "three" => "3",
-                        "seven" => "7",
-                        "eight" => "8",
-                        _ => five_letter_word,
-                    }));
-
-                    index += 5;
-                } else {
-                    transformed_letters.push(String::from(&line[index..index + 1]));
-                    index += 1;
-                }
-            }
-            transformed_letters.join("")
+            let first_digit = get_digit(line, Position::Beginning);
+            let last_digit = get_digit(line, Position::End);
+            format!("{first_digit}{last_digit}")
         })
         .collect::<Vec<_>>()
         .join("\n");
