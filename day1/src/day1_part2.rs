@@ -7,6 +7,6 @@ fn main() {
         .expect("Please supply an input file as the first argument");
     let input = std::fs::read_to_string(&args[1])
         .unwrap_or_else(|err| panic!("Error reading file '{file_path}': {err:?}"));
-    let value = trebuchet_calibration::get_calibration_sum(&input);
+    let value = trebuchet_calibration::get_calibration_sum_from_spelled_out_digits(&input);
     println!("trebuchet calibration value = {value}");
 }
