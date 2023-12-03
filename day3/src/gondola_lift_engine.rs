@@ -49,6 +49,191 @@ mod test {
     }
 }
 
+/// Gets the sum of the gear ratios from the schematic.
+pub fn get_sum_of_all_engine_gear_ratios(lift_engine_schematic: &str) -> u64 {
+    let es = EngineSchematics::from(lift_engine_schematic);
+    let gear_ratios = get_gear_ratios(&es);
+    gear_ratios.iter().sum()
+}
+
+struct EngineSchematics {
+    /// Width of the schematic.
+    width: usize,
+
+    /// Height of the schematic.
+    height: usize,
+
+    /// Buffer containing schematic details.
+    buffer: String,
+}
+
+impl EngineSchematics {
+    fn get_thing(&self, x: usize, y: usize) -> Option<&str> {
+        if let Some(start) = self.get_start(x, y) {
+            return self.buffer.get(start..start + 1);
+        }
+        None
+    }
+
+    fn get_start(&self, x: usize, y: usize) -> Option<usize> {
+        let offset = y as i32 * (self.width as i32) + x as i32;
+        if offset < 0 {
+            return None;
+        }
+        Some(offset as usize)
+    }
+
+    fn get_numbers_adjacent_to(&self, x: usize, y: usize) -> Vec<u64> {
+        // Left and right are the simplest cases since there is no potential for multiple numbers
+        // on either side.
+        let mut numbers = vec![
+            // Left.
+            match x {
+                0 => None,
+                _ => self.get_number(x - 1, y),
+            },
+            // Right.
+            self.get_number(x + 1, y),
+        ];
+
+        let mut y_coords = vec![y + 1];
+        if y > 0 {
+            y_coords.push(y - 1);
+        }
+
+        for sy in y_coords {
+            let sx = x + 1;
+            let mut next_offset = 0;
+            let mut maybe_more_numbers_to_the_left = true;
+            while maybe_more_numbers_to_the_left {
+                let number = match y {
+                    0 => None,
+                    _ => self.get_number(sx - next_offset, sy),
+                };
+                if let Some(number) = number {
+                    numbers.push(Some(number));
+
+                    // Start where the next number could be.
+                    // +1 would get us one spot over, but that would mean it's part of the same
+                    // number;
+                    // +2 is the next possible spot.
+                    next_offset += number.left_offset + 2
+                } else {
+                    next_offset += 1;
+                }
+
+                // Because there are 3 possible spots above/below the reference point.
+                // But only 2 when we're all the way to the left.
+                maybe_more_numbers_to_the_left = next_offset
+                    < match x {
+                        0 => 2,
+                        _ => 3,
+                    };
+            }
+        }
+
+        numbers
+            .iter()
+            .filter_map(|n| match n {
+                None => None,
+                Some(number) => Some(number.value),
+            })
+            .collect::<Vec<_>>()
+    }
+
+    fn get_number(&self, x: usize, y: usize) -> Option<Number> {
+        if !is_digit(self.get_thing(x, y)) {
+            return None;
+        }
+
+        let mut sx = x;
+        while sx > 0 && is_digit(self.get_thing(sx - 1, y)) {
+            sx -= 1;
+        }
+
+        let slice_start = self
+            .get_start(sx, y)
+            .expect("EngineSchematics::get_number: get_start should have returned some value.");
+        let slice_end = {
+            let mut sx = x + 1;
+            let mut done = false;
+            while !done {
+                if sx >= self.width {
+                    done = true;
+                } else {
+                    let s = self.get_thing(sx, y);
+                    //println!("symbol = {s:?}");
+                    if is_digit(s) {
+                        //println!("{s:?} is a digit");
+                        sx += 1;
+                    } else {
+                        //println!("DONE, [{number_slice_start}, {sx}]");
+                        done = true;
+                    }
+                }
+            }
+            self.get_start(sx, y)
+                .expect("EngineSchematics::get_number: get_start should always unwrap here.")
+        };
+        let slice = &self.buffer[slice_start..slice_end];
+        //println!("attempting to parse {number_slice}");
+        let number = slice
+            .parse::<u64>()
+            .expect("EngineSchematics::from<&str>: unable to parse number");
+        let num_digits = slice.len();
+        Some(Number {
+            value: number,
+            left_offset: x - sx,
+            num_digits,
+        })
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Number {
+    value: u64,
+    left_offset: usize,
+    num_digits: usize,
+}
+
+impl From<&str> for EngineSchematics {
+    fn from(value: &str) -> Self {
+        let value = value.replace(' ', "");
+        let value = value.trim();
+        let width = value
+            .find('\n')
+            .expect("EngineSchematics::from<&str>: Unable to find first newline.");
+        let lines = value.lines();
+        let height = lines.clone().count();
+        let buffer = lines.collect::<Vec<_>>().join("");
+        Self {
+            width,
+            height,
+            buffer,
+        }
+    }
+}
+
+fn get_gear_ratios(schematics: &EngineSchematics) -> Vec<u64> {
+    let mut gear_ratios = Vec::new();
+
+    for x in 0..schematics.width {
+        for y in 0..schematics.height {
+            if schematics.get_thing(x, y) == Some("*") {
+                let adjacent_numbers = schematics.get_numbers_adjacent_to(x, y);
+                if adjacent_numbers.len() == 2 {
+                    gear_ratios.push(
+                        adjacent_numbers.first().expect("impossibru")
+                            * adjacent_numbers.last().expect("impossibru"),
+                    );
+                }
+            }
+        }
+    }
+
+    gear_ratios
+}
+
 /// Gets the sum of all the engine part numbers from the schematic.
 pub fn get_sum_of_all_engine_part_numbers(lift_engine_schematic: &str) -> u64 {
     let g = GondolaLiftEngine::from(lift_engine_schematic);
