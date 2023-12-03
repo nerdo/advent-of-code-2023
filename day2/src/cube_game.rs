@@ -27,6 +27,21 @@ Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
 
         assert_eq!(result, 8)
     }
+
+    #[test]
+    fn get_sum_of_power_of_minimum_cube_sets_returns_the_correct_answer() {
+        let input = r"
+Game 1: 3 blue, 4 red; 1 red, 2 green, 6 blue; 2 green
+Game 2: 1 blue, 2 green; 3 green, 4 blue, 1 red; 1 green, 1 blue
+Game 3: 8 green, 6 blue, 20 red; 5 blue, 4 red, 13 green; 5 green, 1 red
+Game 4: 1 green, 3 red, 6 blue; 3 green, 6 red; 3 green, 15 blue, 14 red
+Game 5: 6 red, 1 blue, 3 green; 2 blue, 1 red, 2 green
+        ";
+
+        let result = get_sum_of_power_of_minimum_cube_sets(input);
+
+        assert_eq!(result, 2286)
+    }
 }
 
 /// Defines a set of cubes
@@ -40,6 +55,22 @@ pub struct CubeSet {
 
     /// The number of blue cubes.
     pub blue: Option<u32>,
+}
+
+impl CubeSet {
+    pub fn get_power(&self) -> u32 {
+        let mut power = 1;
+        if let Some(red) = self.red {
+            power *= red;
+        }
+        if let Some(green) = self.green {
+            power *= green;
+        }
+        if let Some(blue) = self.blue {
+            power *= blue;
+        }
+        power
+    }
 }
 
 /// Gets the sum of the possible game IDs from the input if the bag were to only contain the specified cubes.
@@ -64,6 +95,38 @@ struct Game {
 
     /// Revealed cube sets.
     cube_sets: Vec<CubeSet>,
+}
+
+impl Game {
+    pub fn get_minimum_cube_set(&self) -> CubeSet {
+        let mut red = 0;
+        let mut green = 0;
+        let mut blue = 0;
+
+        for c in &self.cube_sets {
+            if let Some(r) = c.red {
+                if r > red {
+                    red = r;
+                }
+            }
+            if let Some(g) = c.green {
+                if g > green {
+                    green = g;
+                }
+            }
+            if let Some(b) = c.blue {
+                if b > blue {
+                    blue = b;
+                }
+            }
+        }
+
+        CubeSet {
+            red: Some(red),
+            green: Some(green),
+            blue: Some(blue),
+        }
+    }
 }
 
 impl From<&str> for Games {
@@ -169,4 +232,14 @@ impl From<&str> for CubeSet {
             },
         )
     }
+}
+
+/// Gets the sum of the power of the minimum cube sets.
+pub fn get_sum_of_power_of_minimum_cube_sets(game_records: &str) -> u32 {
+    let games = Games::from(game_records);
+    games
+        .0
+        .iter()
+        .map(|g| g.get_minimum_cube_set().get_power())
+        .sum()
 }
