@@ -47,3 +47,14 @@ Huzzah!
 
 It worked.
 
+# Part 2
+
+## Impressions
+
+A brute force approach here won't work. Similar to Part 1, if one were to take a straightforward approach of mapping through every possible input value, memory (and time/CPU cycles) would be an impediment.
+
+The first part of the problem forced me to deal with compressed mapping data; the second part seems to suggest/force dealing with compressing input data.
+
+It seems like the right approach here is to refactor the code so that the input becomes ranges of numbers and the output produces ranges of locations.
+
+At that point, it should be trivial to select the lowest location number by simply sorting the resulting list of location ranges in ascending order and choosing the first one.
