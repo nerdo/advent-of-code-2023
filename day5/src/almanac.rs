@@ -2,7 +2,7 @@
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 #[cfg(test)]
 mod test {
@@ -62,25 +62,47 @@ pub struct AlmanacBuilder {
 // The backing store for almanac data.
 struct AlmanacDatabase {
     seeds: HashSet<u64>,
-    seed_to_soil: HashMap<u64, u64>,
-    soil_to_fertilizer: HashMap<u64, u64>,
-    fertilizer_to_water: HashMap<u64, u64>,
-    water_to_light: HashMap<u64, u64>,
-    light_to_temperature: HashMap<u64, u64>,
-    temperature_to_humidity: HashMap<u64, u64>,
-    humidity_to_location: HashMap<u64, u64>,
+    seed_to_soil: Buoy<Vec<Mapping>>,
+    soil_to_fertilizer: Buoy<Vec<Mapping>>,
+    fertilizer_to_water: Buoy<Vec<Mapping>>,
+    water_to_light: Buoy<Vec<Mapping>>,
+    light_to_temperature: Buoy<Vec<Mapping>>,
+    temperature_to_humidity: Buoy<Vec<Mapping>>,
+    humidity_to_location: Buoy<Vec<Mapping>>,
+}
+
+/// Generic wrapper tuple struct for newtype pattern for the sake of being able to "buoy" externally defined
+/// types so that traits can be implemented for them.
+struct Buoy<T>(pub T);
+
+impl Buoy<Vec<Mapping>> {
+    fn get(&self, source_value: u64) -> u64 {
+        for mapping in &self.0 {
+            if source_value >= mapping.source && source_value <= mapping.source + mapping.count {
+                let offset = source_value - mapping.source;
+                return mapping.destination + offset;
+            }
+        }
+        source_value
+    }
+}
+
+struct Mapping {
+    source: u64,
+    destination: u64,
+    count: u64,
 }
 
 impl From<&str> for AlmanacDatabase {
     fn from(value: &str) -> Self {
         let seeds = HashSet::new();
-        let seed_to_soil = HashMap::new();
-        let soil_to_fertilizer = HashMap::new();
-        let fertilizer_to_water = HashMap::new();
-        let water_to_light = HashMap::new();
-        let light_to_temperature = HashMap::new();
-        let temperature_to_humidity = HashMap::new();
-        let humidity_to_location = HashMap::new();
+        let seed_to_soil = Buoy(Vec::new());
+        let soil_to_fertilizer = Buoy(Vec::new());
+        let fertilizer_to_water = Buoy(Vec::new());
+        let water_to_light = Buoy(Vec::new());
+        let light_to_temperature = Buoy(Vec::new());
+        let temperature_to_humidity = Buoy(Vec::new());
+        let humidity_to_location = Buoy(Vec::new());
 
         let mut instance = Self {
             seeds,
@@ -131,11 +153,11 @@ impl AlmanacDatabase {
                     self.seeds.insert(*n);
                 });
             }
-            map_id => {
+            map_type => {
                 if numbers.len() < 3 {
                     panic!("numbers should have at least 3 elements!");
                 }
-                let map = match &map_id {
+                let map = match &map_type {
                     AlmanacSection::Seeds => panic!("impossibru!"),
                     AlmanacSection::SeedToSoil => &mut self.seed_to_soil,
                     AlmanacSection::SoilToFertilizer => &mut self.soil_to_fertilizer,
@@ -145,13 +167,13 @@ impl AlmanacDatabase {
                     AlmanacSection::TemperatureToHumidity => &mut self.temperature_to_humidity,
                     AlmanacSection::HumidityToLocation => &mut self.humidity_to_location,
                 };
-                let from_start = numbers.get(1).expect("unable to get numbers[1]");
-                let to_start = numbers.get(0).expect("unable to get numbers[0]");
-                let count = numbers.get(2).expect("unable to get numbers[2]");
-                (0..*count).for_each(|i| {
-                    let source = *from_start + i;
-                    let destination = *to_start + i;
-                    map.insert(source, destination);
+                let source = *numbers.get(1).expect("unable to get numbers[1]");
+                let destination = *numbers.get(0).expect("unable to get numbers[0]");
+                let count = *numbers.get(2).expect("unable to get numbers[2]");
+                map.0.push(Mapping {
+                    source,
+                    destination,
+                    count,
                 });
             }
         }
@@ -247,20 +269,16 @@ impl Almanac {
         let mut locations = db
             .seeds
             .iter()
-            .map(|seed| db.seed_to_soil.get(seed).unwrap_or(seed))
-            .map(|soil| db.soil_to_fertilizer.get(soil).unwrap_or(soil))
-            .map(|fertilizer| db.fertilizer_to_water.get(fertilizer).unwrap_or(fertilizer))
-            .map(|water| db.water_to_light.get(water).unwrap_or(water))
-            .map(|light| db.light_to_temperature.get(light).unwrap_or(light))
-            .map(|temperature| {
-                db.temperature_to_humidity
-                    .get(temperature)
-                    .unwrap_or(temperature)
-            })
-            .map(|humidity| db.humidity_to_location.get(humidity).unwrap_or(humidity))
+            .map(|seed| db.seed_to_soil.get(*seed))
+            .map(|soil| db.soil_to_fertilizer.get(soil))
+            .map(|fertilizer| db.fertilizer_to_water.get(fertilizer))
+            .map(|water| db.water_to_light.get(water))
+            .map(|light| db.light_to_temperature.get(light))
+            .map(|temperature| db.temperature_to_humidity.get(temperature))
+            .map(|humidity| db.humidity_to_location.get(humidity))
             .collect::<Vec<_>>();
         locations.sort_unstable();
-        **locations
+        *locations
             .first()
             .expect("There should be at least one location!")
     }

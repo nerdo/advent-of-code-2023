@@ -40,3 +40,10 @@ But this time, with a plan:
 
 1. Before writing code, test the theory "on paper"...
 2. When the theory is sound, refactor the code to process the maps without expanding them fully.
+
+### Attempt 3
+
+Huzzah!
+
+It worked.
+
