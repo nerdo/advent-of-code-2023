@@ -2,8 +2,6 @@
 #![warn(missing_docs)]
 #![warn(clippy::unwrap_used)]
 
-use std::collections::HashSet;
-
 #[cfg(test)]
 mod test {
     use super::*;
@@ -193,6 +191,7 @@ impl EngineSchematics {
 struct Number {
     value: u64,
     left_offset: usize,
+    #[allow(unused_variables, dead_code)]
     num_digits: usize,
 }
 
@@ -283,7 +282,7 @@ fn is_digit(v: Option<&str>) -> bool {
 }
 
 /// Not actually needed - went down a rabbit hole trying to find the bug in my implementation with this one
-fn is_sign(v: Option<&str>) -> bool {
+fn is_sign(_v: Option<&str>) -> bool {
     //matches!(v, Some("+" | "-"))
     false
 }
